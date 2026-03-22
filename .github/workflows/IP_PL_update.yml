@@ -1,4 +1,4 @@
-name: Update IP_PL list
+name: IP_PL_update
 
 on:
   schedule:
