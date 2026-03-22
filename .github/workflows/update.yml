@@ -12,29 +12,32 @@ jobs:
       contents: write
 
     steps:
-      - name: Pobierz strefę PL z ipdeny
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download PL zone from ipdeny
         run: |
           curl -s https://www.ipdeny.com/ipblocks/data/aggregated/pl-aggregated.zone \
             -o pl.zone
 
-      - name: Generuj plik .rsc
+      - name: Generate .rsc file
         run: |
           while IFS= read -r line; do
             line=$(echo "$line" | tr -d '\r')
             [ -z "$line" ] && continue
             echo "/ip firewall address-list add list=IP_PL address=$line comment=ipdeny_PL"
           done < pl.zone > IP_PL.rsc
-          echo "Wpisów: $(wc -l < IP_PL.rsc)"
+          echo "Entries: $(wc -l < IP_PL.rsc)"
 
-      - name: Usuń stary release
+      - name: Delete old release
         run: gh release delete latest --yes || true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Utwórz nowy release z plikiem
+      - name: Create new release with file
         run: |
           gh release create latest IP_PL.rsc \
             --title "IP_PL latest" \
-            --notes "Automatyczna aktualizacja: $(date -u '+%Y-%m-%d')"
+            --notes "Automatic update: $(date -u '+%Y-%m-%d')"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
