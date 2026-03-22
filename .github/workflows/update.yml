@@ -2,7 +2,7 @@ name: Update IP_PL list
 
 on:
   schedule:
-    - cron: '1 11 * * *'
+    - cron: '2 * * * *'
   workflow_dispatch:
 
 jobs:
