@@ -1,0 +1,58 @@
+name: Update IP_PL list
+
+on:
+  schedule:
+    - cron: '0 3 * * 1'   # co poniedziałek o 3:00 UTC
+  workflow_dispatch:        # możliwość ręcznego uruchomienia
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Pobierz strefę PL z ipdeny
+        run: |
+          curl -s https://www.ipdeny.com/ipblocks/data/aggregated/pl-aggregated.zone \
+            -o pl.zone
+
+      - name: Generuj plik .rsc
+        run: |
+          while IFS= read -r line; do
+            line=$(echo "$line" | tr -d '\r')
+            [ -z "$line" ] && continue
+            echo "/ip firewall address-list add list=IP_PL address=$line comment=ipdeny_PL"
+          done < pl.zone > IP_PL.rsc
+          echo "Wpisów: $(wc -l < IP_PL.rsc)"
+
+      - name: Usuń stary release
+        run: |
+          gh release delete latest --yes || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Utwórz nowy release z plikiem
+        run: |
+          gh release create latest IP_PL.rsc \
+            --title "IP_PL latest" \
+            --notes "Automatyczna aktualizacja: $(date -u '+%Y-%m-%d')"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+---
+
+## Krok 3 – Pierwsze uruchomienie
+
+Po wgraniu pliku workflow:
+1. Wejdź w zakładkę **Actions** w repozytorium
+2. Kliknij workflow **Update IP_PL list**
+3. Kliknij **Run workflow** → **Run workflow**
+4. Poczekaj ~30 sekund
+
+---
+
+## Krok 4 – Pobierz stały URL do pliku
+
+Po pierwszym uruchomieniu w zakładce **Releases** pojawi się plik. Stały URL zawsze wygląda tak:
+```
+https://github.com/TWOJ_LOGIN/mikrotik-ip-pl/releases/download/latest/IP_PL.rsc
