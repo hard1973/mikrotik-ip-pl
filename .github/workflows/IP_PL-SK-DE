@@ -1,0 +1,15 @@
+#!/bin/bash
+set -euo pipefail
+COUNTRIES="pl de cz sk"
+OUT=geo-allow.rsc
+
+echo "/ip firewall address-list" > "$OUT.tmp"
+for c in $COUNTRIES; do
+  curl -fsS --retry 3 "https://www.ipdeny.com/ipblocks/data/aggregated/${c}-aggregated.zone" \
+  | awk -v c="$c" '/^[0-9]/ {print "add address="$1" list=GEO-NEW comment="c}' >> "$OUT.tmp"
+done
+
+# Sanity check: PL musi być w pliku i całość nie może być podejrzanie mała
+grep -q 'comment=pl$' "$OUT.tmp" || { echo "brak wpisów PL"; exit 1; }
+[ "$(wc -l < "$OUT.tmp")" -gt 1000 ] || { echo "za mało wpisów"; exit 1; }
+mv "$OUT.tmp" "$OUT"
