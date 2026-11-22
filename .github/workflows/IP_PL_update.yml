@@ -17,7 +17,7 @@ jobs:
 
       - name: Download PL zone from ipdeny
         run: |
-          curl -s https://www.ipdeny.com/ipblocks/data/aggregated/pl-aggregated.zone \
+          curl -fsS --retry 3 https://www.ipdeny.com/ipblocks/data/aggregated/pl-aggregated.zone \
             -o pl.zone
 
       - name: Generate .rsc file
@@ -27,17 +27,15 @@ jobs:
             [ -z "$line" ] && continue
             echo "/ip firewall address-list add list=IP_PL address=$line comment=ipdeny_PL"
           done < pl.zone > IP_PL.rsc
-          echo "Entries: $(wc -l < IP_PL.rsc)"
+          n=$(wc -l < IP_PL.rsc)
+          echo "Entries: $n"
+          [ "$n" -ge 100 ] || { echo "Za mało wpisów, przerywam"; exit 1; }
 
-      - name: Delete old release
-        run: gh release delete latest --yes || true
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Create new release with file
+      - name: Commit IP_PL.rsc to main
         run: |
-          gh release create latest IP_PL.rsc \
-            --title "IP_PL latest" \
-            --notes "Automatic update: $(date -u '+%Y-%m-%d')"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add IP_PL.rsc
+          git diff --cached --quiet && echo "bez zmian" && exit 0
+          git commit -m "update IP_PL.rsc $(date -u +%F)"
+          git push origin HEAD:main
